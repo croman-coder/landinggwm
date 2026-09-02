@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════════
+   GWM Paraguay — sistema de diseño
+   Paleta extraída del CSS real de gwm.com.py: negro + blanco + grises.
+   Sin acento de marca adicional: GWM es casi monocromático.
+   ══════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Marca ─────────────────────────────────────────────────────── */
+  --color-gwm: #000000;
+  --color-gwm-hover: #141414;
+
+  /* ── Neutros ───────────────────────────────────────────────────── */
+  --color-bg: #ffffff;
+  --color-surface: #f1f1f1;
+  --color-surface-2: #f8f8f8;
+  --color-surface-dark: #303030;
+  --color-ink: #141010;
+  --color-border: #e4e4e4;
+  --color-border-strong: #cccccc;
+  --color-text: #1a1a1a;
+  --color-text-2: #444444;
+  --color-text-3: #6b6b6b;
+
+  /* ── Funcionales ───────────────────────────────────────────────── */
+  --color-whatsapp: #25d366;
+  --color-success: #16a34a;
+
+  /* ── Tipografía ────────────────────────────────────────────────── */
+  --font-sans: var(--font-lato), ui-sans-serif, system-ui, sans-serif;
+
+  --text-eyebrow: 0.8125rem;
+  --text-h4: clamp(1.125rem, 1.6vw, 1.375rem);
+  --text-h3: clamp(1.375rem, 2.2vw, 1.75rem);
+  --text-h2: clamp(1.875rem, 3.6vw, 2.75rem);
+  --text-h1: clamp(2.25rem, 5vw, 3.5rem);
+  --text-display: clamp(2.75rem, 7vw, 5.25rem);
+
+  /* ── Forma ─────────────────────────────────────────────────────── */
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 14px;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.06), 0 18px 44px rgb(0 0 0 / 0.12);
+
+  /* ── Movimiento ────────────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur-base: 280ms;
+  --dur-slow: 520ms;
+  --dur-hero: 900ms;
+}
+
+/* ── Capas de apilado ────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --z-sticky: 30;
+    --z-header: 50;
+    --z-drawer: 70;
+    --z-modal: 90;
+    --z-toast: 110;
+
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: clip;
+  }
+
+  h1, h2 {
+    text-wrap: balance;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 900;
+  }
+
+  h3, h4 {
+    text-wrap: balance;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-gwm);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  [id] {
+    scroll-margin-top: 6.5rem;
+  }
+
+  ::selection {
+    background: var(--color-gwm);
+    color: #fff;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   El motivo: el filo negro (análogo al filo rojo de JAC).
+   Una regla de 3 px que se extiende de 0 a 100 %. Un solo gesto,
+   repetido en navegación, cards y títulos de sección.
+   ══════════════════════════════════════════════════════════════════ */
+@layer components {
+  .edge {
+    position: relative;
+  }
+
+  .edge::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--color-gwm);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--dur-base) var(--ease-out);
+  }
+
+  .edge:hover::after,
+  .edge:focus-visible::after,
+  .edge[data-active="true"]::after {
+    transform: scaleX(1);
+  }
+
+  /* Variante superior, para cards de modelo */
+  .edge-top {
+    position: relative;
+  }
+
+  .edge-top::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    background: var(--color-gwm);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--dur-base) var(--ease-out);
+    z-index: 2;
+  }
+
+  .edge-top:hover::before,
+  .edge-top:focus-within::before {
+    transform: scaleX(1);
+  }
+
+  /* Barra corta que precede al eyebrow de sección */
+  .eyebrow-rule::before {
+    content: "";
+    display: inline-block;
+    width: 1.75rem;
+    height: 3px;
+    background: var(--color-gwm);
+    vertical-align: middle;
+    margin-inline-end: 0.75rem;
+  }
+}
+
+/* ── Animaciones ─────────────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Movimiento reducido. Se neutraliza el movimiento, nunca la
+   información: todo queda visible y legible.
+   ══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .edge::after,
+  .edge-top::before {
+    transform: scaleX(1);
+  }
+}
