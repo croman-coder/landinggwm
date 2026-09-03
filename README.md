@@ -63,8 +63,19 @@ npm run build      # build de producción
 npm run lint       # eslint
 ```
 
+## Despliegue
+
+Se publica en **https://gwm.santarosa.lat** con Coolify en el servidor SRPY186,
+detrás del mismo túnel de Cloudflare que `compras` y `callbot`. El runbook
+completo —incluidas las trampas de Coolify que ya mordieron en otros
+proyectos— está en [`docs/deploy-coolify.md`](docs/deploy-coolify.md).
+
+```bash
+docker build -t gwm-landing . && docker run --rm -p 3000:3000 gwm-landing
+```
+
 ## Notas
 
-- `INDEXABLE` en `lib/site.ts` está en `false` (preview de Vercel). Pasar a `true` y setear `SITE.url` al dominio definitivo al publicar.
+- `INDEXABLE` en `lib/site.ts` está en `false` **a propósito, también en producción**: el tráfico entra por el QR de la campaña y no conviene competirle a `gwm.com.py` por las búsquedas de marca. `SITE.url` sí apunta al dominio real, porque de ahí salen las URL canónicas y las de Open Graph.
 - El WhatsApp y las redes se leen de `content/contacto.ts`.
 - Las imágenes de los modelos viven en `public/modelos/<slug>/` en formato `.webp` y con la convención `hero.webp` + `galeria-N.webp` (misma que usa `jac-paraguay`). El logo de GWM del header/footer y las fichas técnicas PDF se sirven desde `gwm.com.py`.

@@ -1,14 +1,19 @@
 /**
  * Configuración del sitio.
  *
- * `INDEXABLE` está en false a propósito: la landing vive en preview de
- * Vercel hasta que se defina el dominio. Mientras sea false emite
+ * `INDEXABLE` queda en false a propósito, también publicada: la landing vive
+ * en santarosa.lat, que es el dominio de operaciones, y su tráfico entra por
+ * el QR de la campaña, no por Google. Indexarla acá le competiría a
+ * gwm.com.py por las mismas búsquedas de marca. Mientras sea false emite
  * `noindex, nofollow`.
+ *
+ * `SITE.url` sí apunta al dominio real: de ahí salen las URL canónicas y las
+ * de Open Graph, que son las que ve WhatsApp al previsualizar el enlace.
  */
 export const INDEXABLE = false;
 
 export const SITE = {
-  url: "https://gwm-py-landing.vercel.app",
+  url: "https://gwm.santarosa.lat",
   name: "GWM Paraguay",
   shortName: "GWM Paraguay",
   locale: "es_PY",
