@@ -3,14 +3,14 @@
 Runbook del despliegue. Verificado contra el servidor el **2026-09-03**, no es
 una guía teórica.
 
-> **Estado: desplegada y sana, esperando el DNS.** El container corre `healthy`,
-> Traefik rutea `Host: gwm.santarosa.lat` y la app responde 200 en `/` y
-> `/gracias`. Lo único que falta es el **registro CNAME en Cloudflare**: sin él
-> `gwm.santarosa.lat` no resuelve desde afuera. Ver "Paso pendiente" al final.
+> **Estado: en línea.** https://gwm.santarosa.lat responde 200 de punta a punta
+> desde el 2026-09-03. Verificado: `/` y `/gracias` en 200, los `.webp` de los
+> modelos, el optimizador `/_next/image`, `robots: noindex, nofollow, nocache` y
+> `og:url` apuntando al dominio correcto.
 
 | | |
 |---|---|
-| **Dominio** | https://gwm.santarosa.lat *(falta el CNAME)* |
+| **Dominio** | https://gwm.santarosa.lat |
 | **Servidor** | `srpy186` — LAN `192.168.221.87` |
 | **Coolify** | http://192.168.221.87:8090 — proyecto **SRPY** / entorno `production` |
 | **App UUID** | `x6fsgjdswj0ehatl9jgwd2bo` |
@@ -106,28 +106,79 @@ Tienen que salir el `Host(...)` con `gwm.santarosa.lat`,
 
 ---
 
-## El túnel: NO le mandes SIGHUP
+## El túnel corre en DOS connectors — hay que reiniciar los dos
 
-`cloudflared` **no recarga la configuración con SIGHUP: se muere.** Y como
-`docker kill` cuenta para Docker como una parada manual, la política
-`restart: unless-stopped` **no lo relevanta**. El 2026-09-03 eso dejó los 13
-hostnames del túnel caídos unos 40 segundos hasta el `docker start`.
+**Esta es la trampa que costó media hora de diagnóstico el 2026-09-03.**
 
-La forma correcta es reiniciarlo:
+El túnel `505fc6ac-…` no lo sirve un solo container: hay **dos**, y los dos
+corren el mismo `tunnelID` montando el mismo `config.yml`:
+
+| Container | Rol |
+|---|---|
+| `cloudflared-compras` | el que documentaban los runbooks viejos |
+| `cloudflared-replica2` | réplica para HA — **la que nadie menciona** |
+
+Cloudflare reparte las peticiones entre los connectors registrados del túnel.
+`cloudflared` lee el `config.yml` **una sola vez, al arrancar**: si reiniciás
+uno solo, el otro sigue en memoria con las reglas viejas y **la mitad del
+tráfico —o todo, según a quién elija el borde— cae al catch-all**.
+
+### Cómo se ve cuando pasa
+
+Un `404` que engaña, porque no viene de donde parece:
+
+- cuerpo **vacío** y **sin `Content-Type`** → es el `http_status:404` de
+  cloudflared. El 404 de Traefik trae 19 bytes (`404 page not found`) y
+  `text/plain`; el de Cloudflare trae HTML.
+- `Server: cloudflare` y `CF-RAY` están igual, porque la respuesta pasa por el
+  borde. **No** significa que la haya generado Cloudflare.
+- los logs del connector **no muestran nada**: en nivel INFO cloudflared no
+  loguea peticiones, así que el silencio no prueba que el tráfico no llegó.
+- `cloudflared tunnel ingress rule <url>` dice que la regla matchea — pero lee
+  el **archivo**, no la memoria del proceso. Por eso no sirve para diagnosticar
+  esto.
+
+### El diagnóstico que sí sirve
+
+Comparar la fecha del `config.yml` contra el arranque de **cada** connector:
 
 ```bash
-ssh srpy-servidor 'docker restart cloudflared-compras'
+ssh srpy-servidor 'CFG=$(stat -c %Y /home/santarosa/cloudflared-compras/config.yml)
+for c in cloudflared-compras cloudflared-replica2; do
+  S=$(date -u -d "$(docker inspect -f "{{.State.StartedAt}}" $c)" +%s)
+  echo "$c: $(date -d @$S -u +%F\ %T) $([ $S -gt $CFG ] && echo OK || echo DESACTUALIZADO)"
+done'
 ```
 
-Y si igual lo matás, la recuperación es:
+### Reiniciar bien
+
+`cloudflared` **no recarga con SIGHUP: se muere.** Y como `docker kill` cuenta
+para Docker como parada manual, `restart: unless-stopped` **no lo relevanta**
+(eso dejó los 13 hostnames caídos 40 s el 2026-09-03).
+
+Reiniciá **de a uno**, esperando que el primero levante antes de tocar el
+segundo: mientras uno esté arriba, el otro absorbe el tráfico y el corte es
+nulo. Reiniciar los dos a la vez sí corta todo.
 
 ```bash
-ssh srpy-servidor 'docker start cloudflared-compras'
+ssh srpy-servidor 'docker restart cloudflared-replica2 && sleep 15 && docker restart cloudflared-compras'
 ```
 
-El corte afecta a **todos** los hostnames del túnel (`compras`, `jac`,
-`callbot`, `tasacion`, `prospectos`, …), no solo al que estás tocando. Hacelo
-fuera de horario si podés.
+Si alguno quedó parado:
+
+```bash
+ssh srpy-servidor 'docker start cloudflared-replica2'
+```
+
+Y antes de dar por bueno un cambio, verificá que **los 13 hostnames** sigan
+contestando, no solo el que tocaste:
+
+```bash
+for h in compras jac callbot advisor prospectos tasacion gwm; do
+  printf "%-12s " "$h"; curl -s -o /dev/null -w "%{http_code}
+" "https://$h.santarosa.lat/"
+done
+```
 
 ### La entrada que se agregó
 
@@ -200,15 +251,10 @@ El token de la API está en `~/.coolify-token` del server (el de
 
 ---
 
-## Paso pendiente: el CNAME
+## El CNAME
 
-`gwm.santarosa.lat` **todavía no resuelve**. En el server no hay con qué
-crearlo: `cloudflared` no está instalado como CLI, no hay `cert.pem` de login y
-no hay token de API de Cloudflare.
-
-Dos caminos:
-
-**a) Desde el dashboard de Cloudflare** — zona `santarosa.lat` → DNS → agregar:
+Creado el 2026-09-03 (`id 5a4079c9b52f16dd4e3c57ef4dadaf96`), idéntico al de
+`compras`:
 
 | Campo | Valor |
 |---|---|
@@ -216,8 +262,24 @@ Dos caminos:
 | Nombre | `gwm` |
 | Destino | `505fc6ac-4f83-4fbe-b490-9110828589ea.cfargotunnel.com` |
 | Proxy | **activado** (nube naranja) |
+| TTL | automático |
+| Zona | `f518fd7cef829a3fd4c49cfbeb8eea1c` |
 
-**b) Con `cloudflared` desde una máquina que tenga el cert:**
+En el server **no hay con qué crearlo**: `cloudflared` no está instalado como
+CLI (solo corre dentro de los containers, que son imágenes sin shell — ni `ls`
+ni `find`), y no hay `cert.pem` de login de cuenta. El `.json` que sí está es
+la credencial de *conexión* del túnel, que no sirve para tocar DNS.
+
+Se hizo por API con un token de zona (**Zone → DNS → Edit**, acotado a
+`santarosa.lat`), contra `POST /client/v4/zones/<zona>/dns_records` con
+`{"type":"CNAME","name":"gwm.santarosa.lat","content":"<uuid>.cfargotunnel.com","proxied":true,"ttl":1}`.
+
+> Ese token **no** alcanza para consultar la API de Tunnels ni las page rules
+> (devuelve `Authentication error` y `code 9109`). Si hace falta mirar la
+> configuración del túnel del lado de Cloudflare, se necesita uno con permiso
+> de cuenta `Cloudflare Tunnel`.
+
+Alternativa, desde una máquina que tenga el cert de cuenta:
 
 ```bash
 cloudflared tunnel route dns --overwrite-dns 505fc6ac-4f83-4fbe-b490-9110828589ea gwm.santarosa.lat
@@ -227,11 +289,10 @@ El `--overwrite-dns` y el UUID explícito no son opcionales: sin ellos
 `cloudflared` toma el túnel por defecto del `config.yml` local y el CNAME
 termina apuntando al túnel equivocado (ya pasó con `compras`).
 
-Cuando esté, verificar:
-
-```bash
-curl -sI https://gwm.santarosa.lat | head -3
-```
+**Ojo: crear el CNAME no alcanzó por sí solo.** El sitio siguió devolviendo 404
+durante ~30 minutos hasta reiniciar el connector desactualizado. Si acabás de
+crear un hostname y da 404, no esperes a que "propague": andá derecho a la
+sección de los dos connectors.
 
 ---
 
