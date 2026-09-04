@@ -3,6 +3,8 @@
  * Fuente: gwm.com.py — verificados contra el HTML en vivo.
  */
 
+import type { Modelo } from "@/content/modelos";
+
 export const CONTACTO = {
   whatsapp: "+595976955836",
   whatsappFormato: "+595 976 955 836",
@@ -20,6 +22,27 @@ export function whatsappUrl(numero: string, mensaje: string): string {
   const digitos = numero.replace(/\D/g, "");
   return `https://wa.me/${digitos}?text=${encodeURIComponent(mensaje)}`;
 }
+
+/**
+ * Mensaje de WhatsApp según la página. Sin `modelo` (landing general), el
+ * genérico de los 3. Con `modelo` (landing de un solo modelo, la del QR),
+ * nombra solo ese — nombrar a los otros dos ahí contradice el aislamiento.
+ */
+export function mensajeWhatsApp(modelo?: Modelo): string {
+  return modelo
+    ? `Hola, vengo desde la landing de GWM y quiero información sobre el ${modelo.nombre}.`
+    : CONTACTO.mensajeGenerico;
+}
+
+/**
+ * Origen por landing de un solo modelo (una por cada QR impreso).
+ * La landing general (los 3 modelos con selector) sigue usando `FORM.origen`.
+ */
+export const ORIGEN_POR_MODELO: Record<string, string> = {
+  "h6-gt-phev": "QR H6-GT",
+  "tank-400-phev": "QR TANK-400",
+  "poer-plus-24t": "QR POER-PLUS",
+};
 
 /**
  * Configuración del formulario de leads (Google Forms).

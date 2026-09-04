@@ -2,6 +2,11 @@
 
 Landing de captura de leads de los modelos **H6 GT PHEV**, **TANK 400 PHEV 4x4** y **POER PLUS 2.4T** de GWM Paraguay, replicando la estructura y el estilo de `jac-paraguay` (Next.js + React + Tailwind v4).
 
+Hay dos formas de llegar:
+
+- **La landing general** (`/`) — los 3 modelos, con selector de modelo en el formulario. Es la que indexa el dominio.
+- **Una landing por modelo** (`/h6-gt-phev`, `/tank-400-phev`, `/poer-plus-24t`) — cada QR impreso lleva a la suya. Ahí solo se ve ESE modelo (nada de navegación a los otros 2, ni en el header ni en el footer), el formulario no tiene el desplegable de modelo (va fijo por código) y el origen del lead queda rotulado por cuál QR fue (`QR H6-GT`, `QR TANK-400`, `QR POER-PLUS`), para poder medir cada uno por separado en la misma hoja de respuestas.
+
 ## Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**
@@ -12,44 +17,74 @@ Landing de captura de leads de los modelos **H6 GT PHEV**, **TANK 400 PHEV 4x4**
 ## Estructura
 
 ```
-app/                    # layout.tsx, page.tsx (landing), gracias/, globals.css
+app/
+  layout.tsx            # html/body, fuente, metadata global — SIN Header/Footer
+  (main)/                 # grupo de rutas: landing general + /gracias
+    layout.tsx            # monta PageChrome (Header/Footer completos)
+    page.tsx               # landing general (los 3 modelos)
+    gracias/page.tsx
+  (modelo)/[slug]/         # grupo de rutas: una landing por modelo (la del QR)
+    layout.tsx              # resuelve el modelo por slug, monta PageChrome aislado
+    page.tsx                 # Hero + specs + formulario de ESE modelo
 components/
-  home/                 # Hero, ModelShowcase, CotizarSection
-  form/LeadForm.tsx     # Formulario de leads → Google Forms
-  layout/               # Header, Footer, WhatsAppFAB
+  home/                 # Hero, HeroModelo, ModelShowcase, ModeloDetalle, CotizarSection
+  form/LeadForm.tsx     # Formulario de leads → Google Forms (con o sin selector)
+  layout/               # Header, Footer, WhatsAppFAB, PageChrome
   ui/                   # Button, Container, SectionTitle, Reveal, Badge, WhatsAppIcon
 content/
   modelos.ts            # Los 3 modelos (datos verificados de gwm.com.py)
-  contacto.ts           # Contacto + configuración del Google Forms
+  contacto.ts           # Contacto + Google Forms + origen por QR
 public/modelos/         # Imágenes locales de cada modelo (hero + galeria-N, .webp)
 lib/                    # site.ts, seo.ts, utils.ts
 ```
 
+`app/layout.tsx` no arma el Header/Footer: un layout no recibe los `params`
+del segmento hijo, así que no puede saber si la página es de un solo modelo.
+Cada grupo `(main)` / `(modelo)` decide eso y arma su propio `PageChrome`
+(`components/layout/PageChrome.tsx`) — mismo Header/Footer/FAB, con o sin el
+modo aislado.
+
 ## Configuración del formulario de leads
 
-El formulario envía los datos a un **Google Forms** cuyo origen es **"QR POP UP"**.
+El formulario envía los datos a un **Google Forms**. Hoy `content/contacto.ts` tiene placeholders (`entry.REEMPLAZAR_...`): mientras no se reemplacen, el formulario le dice "gracias" al visitante pero **no guarda nada** — hay que crear el Form real antes de imprimir cualquier QR.
+
+**Creá el Form con 4 campos, los 4 como "Respuesta corta"** (ninguno como desplegable — el desplegable original vive en el código, no en el Form):
+
+| Campo del Form | Lo llena |
+|---|---|
+| Nombre y apellido | el visitante |
+| Teléfono / WhatsApp | el visitante |
+| Correo electrónico | el visitante |
+| Modelo de interés | el código (el desplegable de la landing general, o fijo por página en las de un solo modelo) |
+
+Sumale un 5º campo oculto para el origen (igual "Respuesta corta"): **Origen**. No lo completa nadie a mano — lo manda el código con el valor de `FORM.origen` o de `ORIGEN_POR_MODELO`, según de qué landing vino.
+
+En **Respuestas → ⋮ → Crear hoja de cálculo** conectás una Google Sheet que se llena sola con cada envío — no hace falta backend ni volumen en el servidor para esto.
 
 La configuración vive en `content/contacto.ts` → `export const FORM`. Cuando tengas el Google Form creado, editá estos valores:
 
 ```ts
 export const FORM = {
-  origen: "QR POP UP",                            // Nombre del formulario / origen del lead
+  origen: "QR POP UP",                            // Origen de la landing GENERAL (con selector)
   action: "https://docs.google.com/forms/d/e/<FORM_ID>/formResponse",
   campos: {
-    nombre:   "entry.<NOMBRE_ENTRY>",              // Campo Nombre y Apellido
-    telefono: "entry.<TELEFONO_ENTRY>",            // Campo Teléfono
-    email:    "entry.<EMAIL_ENTRY>",               // Campo Email
-    modelo:   "entry.<MODELO_ENTRY>",              // Select de modelo de interés
-    origen:   "entry.<ORIGEN_ENTRY>",              // Campo oculto ORIGEN con valor "QR POP UP"
+    nombre:   "entry.<NOMBRE_ENTRY>",
+    telefono: "entry.<TELEFONO_ENTRY>",
+    email:    "entry.<EMAIL_ENTRY>",
+    modelo:   "entry.<MODELO_ENTRY>",
+    origen:   "entry.<ORIGEN_ENTRY>",              // Campo oculto
   },
 };
 ```
 
-> **Cómo obtener los `entry.XXXXXX`:** creá el formulario en Google Forms, abrí la vista previa, examiná el HTML del campo correspondiente y copiá el valor del atributo `name="entry.XXXXXX"`. La URL final tiene `.py`... no, la URL de envío termina en `/formResponse` (mirá el atributo `action` del `<form>` de la vista previa).
+> **Cómo obtener los `entry.XXXXXX`:** en la vista previa del Form, examiná el HTML de cada campo y copiá el `name="entry.XXXXXX"`. La URL de envío es el `action` del `<form>` de esa misma vista previa, termina en `/formResponse`.
 
-### Campo oculto de origen "QR POP UP"
+### Origen por landing
 
-El `LeadForm` fija automáticamente `FORM.campos.origen = "QR POP UP"` antes de enviar. Para que el lead llegue rotulado en Google Sheets, agregá en tu formulario un campo de respuesta (puede quedar oculto en el form de edición) con el `entry` correspondiente.
+`content/contacto.ts` → `ORIGEN_POR_MODELO` mapea cada slug a su rótulo
+(`"QR H6-GT"`, `"QR TANK-400"`, `"QR POER-PLUS"`). La landing general sigue
+usando `FORM.origen` ("QR POP UP"). `LeadForm` manda uno u otro sin que el
+visitante lo vea ni lo elija.
 
 ## Correr el proyecto
 
@@ -61,6 +96,22 @@ npm run dev        # http://localhost:3000
 ```bash
 npm run build      # build de producción
 npm run lint       # eslint
+```
+
+## Los 3 QR
+
+Cada uno es solo la URL de su landing, sin nada especial del lado del código:
+
+| Modelo | URL |
+|---|---|
+| H6 GT PHEV | `https://gwm.santarosa.lat/h6-gt-phev` |
+| TANK 400 PHEV 4x4 | `https://gwm.santarosa.lat/tank-400-phev` |
+| POER PLUS 2.4T | `https://gwm.santarosa.lat/poer-plus-24t` |
+
+Se generan aparte, para imprimir — no son parte del build ni del repo:
+
+```bash
+npx qrcode "https://gwm.santarosa.lat/h6-gt-phev" -o qr-h6-gt-phev.png -w 1000
 ```
 
 ## Despliegue

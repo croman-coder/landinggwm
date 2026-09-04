@@ -1,14 +1,18 @@
 "use client";
 
+import type { Modelo } from "@/content/modelos";
 import { WhatsAppIcon } from "@/components/ui/WhatsAppIcon";
-import { CONTACTO, whatsappUrl } from "@/content/contacto";
+import { CONTACTO, whatsappUrl, mensajeWhatsApp } from "@/content/contacto";
 
 /**
  * Botón flotante de WhatsApp. La landing tiene su propio formulario de
  * leads, así que el FAB complementa (no reemplaza) el canal de captura.
+ *
+ * Con `modelo` (landing de un solo modelo), el mensaje nombra solo ese —
+ * igual que el resto de la página, no menciona a los otros dos.
  */
-export function WhatsAppFAB() {
-  const href = whatsappUrl(CONTACTO.whatsapp, CONTACTO.mensajeGenerico);
+export function WhatsAppFAB({ modelo }: { modelo?: Modelo }) {
+  const href = whatsappUrl(CONTACTO.whatsapp, mensajeWhatsApp(modelo));
 
   return (
     <a

@@ -7,6 +7,15 @@ import { cn } from "@/lib/utils";
 import { NAV } from "@/lib/site";
 import { CONTACTO, whatsappUrl } from "@/content/contacto";
 
+type Props = {
+  /**
+   * Landing de un solo modelo (la que abre cada QR): sin la navegación a
+   * los otros modelos, un único CTA "Cotizar" que ancla al formulario de
+   * esta misma página.
+   */
+  modoAislado?: boolean;
+};
+
 /**
  * Header de la landing GWM.
  *
@@ -14,7 +23,7 @@ import { CONTACTO, whatsappUrl } from "@/content/contacto";
  * scrollear. Los enlaces anclan a las secciones de la propia landing
  * (secciones por modelo + formulario), porque es una página única.
  */
-export function Header() {
+export function Header({ modoAislado = false }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [drawerAbierto, setDrawerAbierto] = useState(false);
 
@@ -81,19 +90,28 @@ export function Header() {
 
           {/* Navegación de escritorio */}
           <div className="ml-auto hidden items-stretch lg:flex">
-            {NAV.map((item) => (
+            {modoAislado ? (
               <a
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "edge flex items-center justify-center px-4 text-[0.8125rem] font-bold uppercase tracking-[0.04em] text-white transition-colors duration-[--dur-base] ease-[--ease-out] hover:bg-white/10",
-                  item.href === "#cotizar" &&
-                    "bg-white px-6 text-[color:var(--color-ink)] hover:bg-white/90",
-                )}
+                href="#cotizar"
+                className="edge flex items-center justify-center bg-white px-6 text-[0.8125rem] font-bold uppercase tracking-[0.04em] text-[color:var(--color-ink)] transition-colors duration-[--dur-base] ease-[--ease-out] hover:bg-white/90"
               >
-                {item.label}
+                Cotizar
               </a>
-            ))}
+            ) : (
+              NAV.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "edge flex items-center justify-center px-4 text-[0.8125rem] font-bold uppercase tracking-[0.04em] text-white transition-colors duration-[--dur-base] ease-[--ease-out] hover:bg-white/10",
+                    item.href === "#cotizar" &&
+                      "bg-white px-6 text-[color:var(--color-ink)] hover:bg-white/90",
+                  )}
+                >
+                  {item.label}
+                </a>
+              ))
+            )}
           </div>
 
           {/* Disparador móvil */}
@@ -148,7 +166,10 @@ export function Header() {
 
             <nav aria-label="Navegación móvil" className="flex-1 px-5 py-6">
               <ul>
-                {NAV.map((item) => (
+                {(modoAislado
+                  ? [{ href: "#cotizar", label: "Cotizar" }]
+                  : NAV
+                ).map((item) => (
                   <li key={item.href}>
                     <a
                       href={item.href}

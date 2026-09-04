@@ -1,28 +1,61 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, MapPin, Phone } from "lucide-react";
-import { modelos } from "@/content/modelos";
-import { CONTACTO, whatsappUrl } from "@/content/contacto";
+import { modelos, type Modelo } from "@/content/modelos";
+import { CONTACTO, whatsappUrl, mensajeWhatsApp } from "@/content/contacto";
+import { cn } from "@/lib/utils";
 
-export function Footer() {
+type Props = {
+  /**
+   * Landing de un solo modelo: la columna "Modelos" (que hoy linkea a los
+   * otros 2) desaparece, la bajada menciona solo este modelo, y el logo
+   * ancla al inicio de esta misma página en vez de navegar a la landing
+   * general con los 3.
+   */
+  modelo?: Modelo;
+};
+
+export function Footer({ modelo }: Props) {
   const anio = new Date().getFullYear();
 
   return (
     <footer className="bg-[color:var(--color-ink)] text-white/70">
-      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 md:grid-cols-12">
-        <div className="px-4 py-10 md:col-span-5 md:px-8 md:py-16">
-          <Link href="/" aria-label="GWM Paraguay — ir al inicio">
-            <Image
-              src="https://gwm.com.py/assets_front/images/gwm_blanco.png"
-              alt="GWM"
-              width={1080}
-              height={180}
-              className="h-8 w-auto"
-            />
-          </Link>
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-[1280px] grid-cols-1 md:grid-cols-12",
+        )}
+      >
+        <div
+          className={cn(
+            "px-4 py-10 md:px-8 md:py-16",
+            modelo ? "md:col-span-6" : "md:col-span-5",
+          )}
+        >
+          {modelo ? (
+            <a href="#inicio" aria-label="GWM Paraguay — ir al inicio">
+              <Image
+                src="https://gwm.com.py/assets_front/images/gwm_blanco.png"
+                alt="GWM"
+                width={1080}
+                height={180}
+                className="h-8 w-auto"
+              />
+            </a>
+          ) : (
+            <Link href="/" aria-label="GWM Paraguay — ir al inicio">
+              <Image
+                src="https://gwm.com.py/assets_front/images/gwm_blanco.png"
+                alt="GWM"
+                width={1080}
+                height={180}
+                className="h-8 w-auto"
+              />
+            </Link>
+          )}
           <p className="mt-5 max-w-[34ch] text-sm leading-relaxed">
-            H6 GT PHEV, TANK 400 PHEV 4x4 y POER PLUS 2.4T. Dejanos tus datos y
-            cotizá tu GWM en Paraguay.
+            {modelo
+              ? `${modelo.nombre}. Dejanos tus datos y cotizá el tuyo en Paraguay.`
+              : "H6 GT PHEV, TANK 400 PHEV 4x4 y POER PLUS 2.4T. Dejanos tus datos y cotizá tu GWM en Paraguay."}
           </p>
           <div className="mt-6 flex gap-px">
             <a
@@ -50,28 +83,35 @@ export function Footer() {
           </div>
         </div>
 
-        <nav
-          aria-label="Modelos"
-          className="border-t border-white/10 px-4 py-10 md:col-span-4 md:border-l md:border-t-0 md:px-8 md:py-16"
-        >
-          <h3 className="eyebrow-rule flex items-center text-xs font-bold uppercase tracking-[0.12em] text-white">
-            Modelos
-          </h3>
-          <ul className="mt-5 space-y-2.5 text-sm">
-            {modelos.map((m) => (
-              <li key={m.slug}>
-                <a
-                  href={`#${m.slug}`}
-                  className="edge inline-block py-0.5 transition-colors duration-[--dur-base] hover:text-white"
-                >
-                  {m.nombre}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        {!modelo && (
+          <nav
+            aria-label="Modelos"
+            className="border-t border-white/10 px-4 py-10 md:col-span-4 md:border-l md:border-t-0 md:px-8 md:py-16"
+          >
+            <h3 className="eyebrow-rule flex items-center text-xs font-bold uppercase tracking-[0.12em] text-white">
+              Modelos
+            </h3>
+            <ul className="mt-5 space-y-2.5 text-sm">
+              {modelos.map((m) => (
+                <li key={m.slug}>
+                  <a
+                    href={`#${m.slug}`}
+                    className="edge inline-block py-0.5 transition-colors duration-[--dur-base] hover:text-white"
+                  >
+                    {m.nombre}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
 
-        <div className="border-t border-white/10 px-4 py-10 md:col-span-3 md:border-l md:border-t-0 md:px-8 md:py-16">
+        <div
+          className={cn(
+            "border-t border-white/10 px-4 py-10 md:border-l md:border-t-0 md:px-8 md:py-16",
+            modelo ? "md:col-span-6" : "md:col-span-3",
+          )}
+        >
           <h3 className="eyebrow-rule flex items-center text-xs font-bold uppercase tracking-[0.12em] text-white">
             Contacto
           </h3>
@@ -83,7 +123,7 @@ export function Footer() {
                 aria-hidden="true"
               />
               <a
-                href={whatsappUrl(CONTACTO.whatsapp, CONTACTO.mensajeGenerico)}
+                href={whatsappUrl(CONTACTO.whatsapp, mensajeWhatsApp(modelo))}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="tabular-nums transition-colors duration-[--dur-base] hover:text-white"

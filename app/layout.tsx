@@ -1,9 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Lato } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { WhatsAppFAB } from "@/components/layout/WhatsAppFAB";
 import { SITE, INDEXABLE } from "@/lib/site";
 
 const lato = Lato({
@@ -65,14 +62,15 @@ export default function RootLayout({
           Saltar al contenido
         </a>
 
-        <Header />
-
-        <main className="flex-1" id="inicio">
-          {children}
-        </main>
-
-        <Footer />
-        <WhatsAppFAB />
+        {/*
+          Header/<main>/Footer/WhatsAppFAB NO viven acá: cada grupo de
+          rutas los monta via PageChrome, porque el layout raíz no recibe
+          los `params` de un segmento hijo y no puede saber si la página es
+          de un solo modelo (necesita aislar la navegación y el mensaje de
+          WhatsApp) o la landing general. Ver
+          components/layout/PageChrome.tsx.
+        */}
+        {children}
       </body>
     </html>
   );
