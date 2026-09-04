@@ -4,19 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Send } from "lucide-react";
 import { modelos, type Modelo } from "@/content/modelos";
-import { FORM } from "@/content/contacto";
+import { FORM, valorModelo } from "@/content/contacto";
 import { cn } from "@/lib/utils";
 
 type Props = {
   /**
    * Modelo fijo (landing de un solo modelo, la que abre cada QR): oculta el
-   * desplegable y manda `modelo.nombre` por debajo, sin que el visitante lo
+   * desplegable y manda el modelo por debajo, sin que el visitante lo
    * elija. Sin este prop se muestra el desplegable con los 3 modelos, como
    * en la landing general.
    */
   modelo?: Modelo;
-  /** Rótulo de origen a enviar. Por defecto, `FORM.origen` ("QR POP UP"). */
-  origen?: string;
 };
 
 /**
@@ -29,21 +27,25 @@ type Props = {
  * nunca devuelve una respuesta legible, así que el flujo local maneja el
  * estado y redirige a /gracias sin depender de la respuesta del navegador.
  */
-export function LeadForm({ modelo, origen }: Props) {
+export function LeadForm({ modelo }: Props) {
   const router = useRouter();
   const [enviando, setEnviando] = useState(false);
-  const origenEfectivo = origen ?? FORM.origen;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const data = new FormData(form);
 
-    data.set(FORM.campos.origen, origenEfectivo);
-    // Sin desplegable (landing de un solo modelo): el valor va igual, fijado
-    // por código en vez de elegido por el visitante.
+    // El Google Form tiene una sola columna para el modelo, así que el valor
+    // lleva también de dónde vino el lead: "(QR)" o "(web)".
     if (modelo) {
-      data.set(FORM.campos.modelo, modelo.nombre);
+      // Landing de un solo modelo: no hay desplegable, lo fija el código.
+      data.set(FORM.campos.modelo, valorModelo(modelo.nombre, true));
+    } else {
+      // Landing general: el visitante eligió del desplegable; se le agrega
+      // el sufijo al valor que ya está en el FormData.
+      const elegido = String(data.get(FORM.campos.modelo) ?? "");
+      data.set(FORM.campos.modelo, valorModelo(elegido, false));
     }
 
     setEnviando(true);
@@ -158,7 +160,8 @@ export function LeadForm({ modelo, origen }: Props) {
 
       <p className="flex items-start gap-2 text-xs leading-relaxed text-[color:var(--color-text-3)]">
         <Check className="mt-0.5 size-4 shrink-0 text-[color:var(--color-success)]" strokeWidth={2.5} aria-hidden="true" />
-        Al enviar aceptás que un asesor GWM te contacte. Origen: {origenEfectivo}.
+        Al enviar aceptás que un asesor GWM te contacte
+        {modelo ? ` por el ${modelo.nombre}` : ""}.
       </p>
     </form>
   );

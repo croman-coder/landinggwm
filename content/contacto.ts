@@ -35,41 +35,49 @@ export function mensajeWhatsApp(modelo?: Modelo): string {
 }
 
 /**
- * Origen por landing de un solo modelo (una por cada QR impreso).
- * La landing general (los 3 modelos con selector) sigue usando `FORM.origen`.
+ * Valor que se manda en el campo "Modelo de Interés" del Google Form.
+ *
+ * Lleva el modelo Y de dónde vino el lead en un solo dato, porque el Form
+ * tiene una sola columna para eso:
+ *
+ *   desde un QR impreso   → "POER PLUS 2.4T (QR)"
+ *   desde la landing general → "POER PLUS 2.4T (web)"
+ *
+ * Así la planilla sirve para las dos cosas: el vendedor ve qué auto quiere
+ * la persona, y marketing puede contar cuántos leads trajo cada QR sin
+ * necesidad de una columna extra.
  */
-export const ORIGEN_POR_MODELO: Record<string, string> = {
-  "h6-gt-phev": "QR H6-GT",
-  "tank-400-phev": "QR TANK-400",
-  "poer-plus-24t": "QR POER-PLUS",
-};
+export function valorModelo(nombre: string, desdeQR: boolean): string {
+  return `${nombre} ${desdeQR ? "(QR)" : "(web)"}`;
+}
 
 /**
  * Configuración del formulario de leads (Google Forms).
  *
- * ⚠️ CONFIGURABLE: el formulario Google Forms original se llama "QR POP UP".
- * Conectar acá los `entry.XXXXXX` de los campos reales y la `formResponse` del
- * formulario creado. Los placeholders actuales no envían datos reales; solo
- * mantienen el flujo funcionando de punta a punta hasta que se reemplacen.
+ * Form: "Formulario de Modelos Columbia". Los 4 campos son de respuesta
+ * corta y obligatorios; "Modelo de Interés" NO lo completa el visitante,
+ * lo manda el código (ver `valorModelo`). Verificado el 2026-09-04 con un
+ * envío real: acepta POST anónimo, sin login ni recolección de correo.
+ *
+ * Si algún día se recrea el Form, estos `entry.XXXXXX` cambian. Se sacan
+ * del HTML de la vista previa (están en el blob `FB_PUBLIC_LOAD_DATA_`,
+ * no como atributos `name` sueltos).
  */
 export const FORM = {
-  /** Nombre del formulario de origen. Los leads quedan rotulados así. */
-  origen: "QR POP UP",
   /** URL de envío del Google Form (acción `formResponse`). */
-  action: "https://docs.google.com/forms/d/e/REEMPLAZAR_FORM_ID/formResponse",
+  action:
+    "https://docs.google.com/forms/d/e/1FAIpQLSdRsoH6i3eYWKaUg41vadjpgIYhmaa4c9sguRuenhQmihRVcw/formResponse",
   titulo: "Solicitá tu cotización",
   descripcion:
     "Dejanos tus datos y un asesor te contacta con una cotización personalizada del modelo que elijas.",
   campos: {
-    /** Campo Nombre y Apellido. */
-    nombre: "entry.REEMPLAZAR_NOMBRE",
-    /** Campo Teléfono / WhatsApp. */
-    telefono: "entry.REEMPLAZAR_TELEFONO",
-    /** Campo Email. */
-    email: "entry.REEMPLAZAR_EMAIL",
-    /** Campo Modelo de interés. */
-    modelo: "entry.REEMPLAZAR_MODELO",
-    /** Campo oculto: origen del lead. Valor fijo "QR POP UP". */
-    origen: "entry.REEMPLAZAR_ORIGEN",
+    /** Nombre y Apellido. */
+    nombre: "entry.1514241206",
+    /** Teléfono / Whatsapp. */
+    telefono: "entry.398727019",
+    /** Correo Electrónico. */
+    email: "entry.706488911",
+    /** Modelo de Interés. Lo fija el código, no el visitante. */
+    modelo: "entry.1172442362",
   },
 } as const;

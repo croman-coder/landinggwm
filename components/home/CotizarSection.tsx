@@ -1,6 +1,5 @@
 import { ShieldCheck, Wallet, Wrench } from "lucide-react";
 import type { Modelo } from "@/content/modelos";
-import { ORIGEN_POR_MODELO } from "@/content/contacto";
 import { LeadForm } from "@/components/form/LeadForm";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 
@@ -39,13 +38,10 @@ type Props = {
 
 /**
  * Sección ancla #cotizar: el formulario de leads es el corazón de la landing.
- * Los datos van a Google Forms, con el origen según de qué landing vienen
- * (`ORIGEN_POR_MODELO` para las de un solo modelo, "QR POP UP" para la
- * general).
+ * Los datos van al Google Form; el modelo que se manda distingue si el lead
+ * vino de un QR o de la landing general (ver `valorModelo`).
  */
 export function CotizarSection({ modelo }: Props) {
-  const origen = modelo ? ORIGEN_POR_MODELO[modelo.slug] : undefined;
-
   return (
     <section
       id="cotizar"
@@ -87,7 +83,7 @@ export function CotizarSection({ modelo }: Props) {
           {/* Formulario */}
           <div className="lg:col-span-6">
             <div className="border border-[color:var(--color-border-strong)] bg-white p-6 shadow-[var(--shadow-card)] md:p-8">
-              <LeadForm modelo={modelo} origen={origen} />
+              <LeadForm modelo={modelo} />
             </div>
           </div>
         </div>

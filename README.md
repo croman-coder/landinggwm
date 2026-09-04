@@ -5,7 +5,7 @@ Landing de captura de leads de los modelos **H6 GT PHEV**, **TANK 400 PHEV 4x4**
 Hay dos formas de llegar:
 
 - **La landing general** (`/`) — los 3 modelos, con selector de modelo en el formulario. Es la que indexa el dominio.
-- **Una landing por modelo** (`/h6-gt-phev`, `/tank-400-phev`, `/poer-plus-24t`) — cada QR impreso lleva a la suya. Ahí solo se ve ESE modelo (nada de navegación a los otros 2, ni en el header ni en el footer), el formulario no tiene el desplegable de modelo (va fijo por código) y el origen del lead queda rotulado por cuál QR fue (`QR H6-GT`, `QR TANK-400`, `QR POER-PLUS`), para poder medir cada uno por separado en la misma hoja de respuestas.
+- **Una landing por modelo** (`/h6-gt-phev`, `/tank-400-phev`, `/poer-plus-24t`) — cada QR impreso lleva a la suya. Ahí solo se ve ESE modelo (nada de navegación a los otros 2, ni en el header ni en el footer) y el formulario no tiene el desplegable de modelo: va fijo por código, rotulado `(QR)` para poder distinguirlo en la hoja de respuestas de los que entran por la landing general.
 
 ## Stack
 
@@ -46,45 +46,55 @@ modo aislado.
 
 ## Configuración del formulario de leads
 
-El formulario envía los datos a un **Google Forms**. Hoy `content/contacto.ts` tiene placeholders (`entry.REEMPLAZAR_...`): mientras no se reemplacen, el formulario le dice "gracias" al visitante pero **no guarda nada** — hay que crear el Form real antes de imprimir cualquier QR.
+Los leads van a un **Google Form** ("Formulario de Modelos Columbia"), que los
+deja en su hoja de respuestas vinculada. No hay backend ni base de datos: el
+navegador del visitante postea directo al `formResponse` del Form.
 
-**Creá el Form con 4 campos, los 4 como "Respuesta corta"** (ninguno como desplegable — el desplegable original vive en el código, no en el Form):
+Conectado y verificado el 2026-09-04 con un envío real. La configuración vive
+en `content/contacto.ts` → `FORM`:
 
-| Campo del Form | Lo llena |
-|---|---|
-| Nombre y apellido | el visitante |
-| Teléfono / WhatsApp | el visitante |
-| Correo electrónico | el visitante |
-| Modelo de interés | el código (el desplegable de la landing general, o fijo por página en las de un solo modelo) |
+| Campo del Form | `entry` | Lo completa |
+|---|---|---|
+| Nombre y Apellido | `entry.1514241206` | el visitante |
+| Teléfono / Whatsapp | `entry.398727019` | el visitante |
+| Correo Electrónico | `entry.706488911` | el visitante |
+| Modelo de Interés | `entry.1172442362` | **el código** |
 
-Sumale un 5º campo oculto para el origen (igual "Respuesta corta"): **Origen**. No lo completa nadie a mano — lo manda el código con el valor de `FORM.origen` o de `ORIGEN_POR_MODELO`, según de qué landing vino.
+Los 4 son de respuesta corta y obligatorios. "Modelo de Interés" no lo ve el
+visitante como tal: en las landings de un modelo lo fija el código, y en la
+general sale del desplegable.
 
-En **Respuestas → ⋮ → Crear hoja de cálculo** conectás una Google Sheet que se llena sola con cada envío — no hace falta backend ni volumen en el servidor para esto.
+### El valor del modelo lleva también el origen
 
-La configuración vive en `content/contacto.ts` → `export const FORM`. Cuando tengas el Google Form creado, editá estos valores:
+El Form tiene una sola columna para el modelo, así que `valorModelo()`
+(en `content/contacto.ts`) le agrega de dónde vino el lead:
 
-```ts
-export const FORM = {
-  origen: "QR POP UP",                            // Origen de la landing GENERAL (con selector)
-  action: "https://docs.google.com/forms/d/e/<FORM_ID>/formResponse",
-  campos: {
-    nombre:   "entry.<NOMBRE_ENTRY>",
-    telefono: "entry.<TELEFONO_ENTRY>",
-    email:    "entry.<EMAIL_ENTRY>",
-    modelo:   "entry.<MODELO_ENTRY>",
-    origen:   "entry.<ORIGEN_ENTRY>",              // Campo oculto
-  },
-};
+```
+POER PLUS 2.4T (QR)    ← escaneó el QR impreso de ese modelo
+POER PLUS 2.4T (web)   ← entró a la landing general y lo eligió del desplegable
 ```
 
-> **Cómo obtener los `entry.XXXXXX`:** en la vista previa del Form, examiná el HTML de cada campo y copiá el `name="entry.XXXXXX"`. La URL de envío es el `action` del `<form>` de esa misma vista previa, termina en `/formResponse`.
+Así la misma columna sirve para las dos cosas: el vendedor ve qué auto quiere
+la persona, y se puede contar cuántos leads trajo cada QR sin una columna extra.
 
-### Origen por landing
+### Si algún día se recrea el Form
 
-`content/contacto.ts` → `ORIGEN_POR_MODELO` mapea cada slug a su rótulo
-(`"QR H6-GT"`, `"QR TANK-400"`, `"QR POER-PLUS"`). La landing general sigue
-usando `FORM.origen` ("QR POP UP"). `LeadForm` manda uno u otro sin que el
-visitante lo vea ni lo elija.
+Los `entry.XXXXXX` cambian. **No están como atributos `name` en el HTML** — hay
+que sacarlos del blob `FB_PUBLIC_LOAD_DATA_` de la vista previa:
+
+```bash
+curl -sL "https://docs.google.com/forms/d/e/<FORM_ID>/viewform" -o form.html
+python3 -c "
+import re, json
+d = json.loads(re.search(r'FB_PUBLIC_LOAD_DATA_ = (\[.*?\]);', open('form.html', encoding='utf-8').read(), re.S).group(1))
+for q in d[1][1]:
+    for c in (q[4] or []): print(f'entry.{c[0]}', q[1])
+"
+```
+
+> **Importante:** el Form no puede exigir inicio de sesión ni estar restringido
+> a la organización. Si lo está, los envíos se pierden **en silencio** — el
+> visitante ve "gracias" y el lead nunca llega.
 
 ## Correr el proyecto
 
